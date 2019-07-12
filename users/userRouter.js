@@ -10,12 +10,20 @@ router.use(express.json());
 
 function validateUserId(req, res, next) {
   const { id } = req.params;
-  console.log(req.params.id)
-  if(id) {
-    res.status(400).json({ message: "invalid user id" });
-  } else {
-    next();
-  }
+
+  User.getById(id)
+    .then(res => {
+      if(res) {
+        console.log(res);
+        req.user = res;
+        next();
+      } else {
+        res.status(400).json({ message: `Invalid user id: ${id}` });
+      }
+    })
+    .catch(error => {
+      res.status(500).json(error)
+    });
 };
 
 function validateUser(req, res, next) {
@@ -60,25 +68,37 @@ router.get('/', (req, res) => {
     });
 });
 
-router.get('/:id', validateUserId, (req, res) => {
-  User.getById(req.params.id)
-    .then(user => {
-      res.status(200).json(user)
+router.get("/:id", validateUserId, (req, res) => {
+  res.status(200).json(req.user);
+});
+
+router.get('/:id/posts', validateUserId, (req, res) => {
+  const { id } = req.params;
+
+  User.getUserPosts(id)
+    .then(userPosts => {
+      res.status(200).json(userPosts)
     })
     .catch(() => {
       res.status(500).json({
-        error: "The User info could not be retrieved"
-      });
+        error: "The user's post information could not be retrieved."
+      })
     });
 });
 
-router.get('/:id/posts', (req, res) => {
-
-});
-
 //The D in CRUD
-router.delete('/:id', (req, res) => {
+router.delete('/:id', validateUserId, (req, res) => {
+  const { id } = req.params;
 
+  User.remove(id)
+    .then(deleted => {
+      res.status(204).end()
+    })
+    .catch(() => {
+      res.status(500).json({
+        error: "The user information could not be deleted."
+      })
+    });
 });
 
 //The U in CRUD
